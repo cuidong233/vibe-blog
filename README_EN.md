@@ -51,18 +51,86 @@ Banana Vibe Blog was born to solve these problems. Based on multi-Agent collabor
 5. **Tech Beginners**: Easily get started with new technologies through AI-generated articles
 
 
-## 🎨 Result Examples
+## 🖼️ Demo & Results
+
+### Homepage - Clean and Elegant Input Interface
+
+![Homepage](./backend/outputs/images/首页图.png)
+
+*Input topic, select article type and length, generate with one click*
+
+**Article Types**:
+- 📚 **Tutorial**: Step-by-step teaching, master technology from zero to one
+- 🔧 **Problem Solving**: Targeted solutions for specific problems
+- 📊 **Comparative Analysis**: Multi-solution comparison to help with tech selection
+
+**Article Length**:
+
+| Length | Chapters | Reading Time | Depth | Use Case |
+|:---:|:---:|:---:|:---:|:---|
+| 📄 **Short** | 3-5 chapters | ~30 min | shallow | Quick introduction, fast start |
+| 📑 **Medium** | 5-8 chapters | ~60 min | medium | Concrete examples + step-by-step, deep learning |
+| 📚 **Long** | 8-12 chapters | ~90+ min | deep | Principle analysis + data support + edge cases, comprehensive mastery |
+
+> 💡 **Questioning Depth**: The system automatically adjusts content review standards based on article length. Long articles trigger stricter depth checks to ensure each concept has data support and principle analysis.
+
+### AI Workflow Status - Real-time Generation Progress Tracking
 
 <div align="center">
-
-| | |
-|:---:|:---:|
-| **Redis Quick Start Tutorial** | **Message Queue Introduction** |
-| Build a high-performance cache system from scratch | Build an async communication system from scratch |
-| **Distributed Lock Guide** | **Microservices Architecture Intro** |
-| Master resource synchronization in 30 minutes | Evolution from monolith to distributed |
-
+<table>
+<tr>
+<td><img src="./backend/outputs/images/中间运行过程图-1.png" width="400"/></td>
+<td><img src="./backend/outputs/images/中间运行过程图-2.png" width="400"/></td>
+</tr>
+<tr>
+<td align="center"><b>Step 1: Material Collection</b><br>Intelligent web search for resources</td>
+<td align="center"><b>Step 2-3: Outline Planning & Content Writing</b><br>Generate structured outline, write by chapter</td>
+</tr>
+<tr>
+<td><img src="./backend/outputs/images/中间运行过程图-4.png" width="400"/></td>
+<td><img src="./backend/outputs/images/中间运行过程图-5.png" width="400"/></td>
+</tr>
+<tr>
+<td align="center"><b>Step 4: Depth Questioning</b><br>Check content depth, supplement details</td>
+<td align="center"><b>Step 5: Code Generation</b><br>Generate runnable example code</td>
+</tr>
+<tr>
+<td><img src="./backend/outputs/images/中间运行过程图-6.png" width="400"/></td>
+<td><img src="./backend/outputs/images/中间运行过程图-7.png" width="400"/></td>
+</tr>
+<tr>
+<td align="center"><b>Step 6: Image Generation</b><br>Mermaid diagrams + AI images</td>
+<td align="center"><b>Step 7: Quality Review</b><br>Score and provide improvement suggestions</td>
+</tr>
+<tr>
+<td><img src="./backend/outputs/images/中间运行过程图-8.png" width="400"/></td>
+<td><img src="./backend/outputs/images/中间运行过程图-9.png" width="400"/></td>
+</tr>
+<tr>
+<td align="center"><b>Step 8: Document Assembly</b><br>Assemble complete document, extract summary</td>
+<td align="center"><b>🎉 Generation Complete</b><br>Auto-save Markdown file</td>
+</tr>
+</table>
 </div>
+
+### Blog Results - Professional Technical Articles
+
+![Blog Results](./backend/outputs/images/技术博客结果图.png)
+
+*Complete blog content preview, supports image export and Markdown download*
+
+---
+
+## 🎨 Blog Generation Examples
+
+| Blog Title | Local Preview | CSDN |
+|:---|:---:|:---:|
+| **Triton Deployment Practical Guide: From Design Principles to Production** | [Markdown](./backend/outputs/Triton%20部署实战指南_从设计思想到生产落地_20251231_034839.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156437086) |
+| **vLLM Inference Engine Deep Dive: Core Acceleration Mechanisms and Component Principles** | [Markdown](./backend/outputs/vLLM推理引擎深度拆解_核心加速机制与组件原理实战指南_20251231_031953.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156436798) |
+| **Message Queue Getting Started: Building an Async Communication System from Scratch** | [Markdown](./backend/outputs/消息队列入门实战_从零搭建异步通信系统_20251230_045909.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156406666) |
+| **Distributed Lock Practical Guide: Master High-Concurrency Resource Synchronization in 30 Minutes** | [Markdown](./backend/outputs/分布式锁实战指南_30分钟掌握高并发下的资源同步控制_20251230_052151.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156406394) |
+| **RAG Evolution Illustrated: Traditional RAG vs Graph RAG Architecture Comparison** | [Markdown](./backend/outputs/图解RAG进化_传统RAG%20vs%20Graph%20RAG架构实战对比_20251231_042358.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156437897) |
+| **Redis Quick Start Tutorial: Building a High-Performance Cache System from Scratch** | [Markdown](./backend/outputs/Redis%20快速上手实战教程_从零搭建高性能缓存系统_20251230_043948.md) | [View](https://blog.csdn.net/ll1042668699/article/details/156438172) |
 
 
 ## 🎯 Feature Introduction
@@ -252,14 +320,25 @@ banana-blog/
 
 ## 🔧 Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AI_PROVIDER_FORMAT` | AI Provider format | openai |
-| `OPENAI_API_KEY` | OpenAI API Key | - |
-| `OPENAI_API_BASE` | OpenAI API Base URL | https://api.openai.com/v1 |
-| `TEXT_MODEL` | Text generation model | gpt-4o |
-| `ZHIPU_API_KEY` | Zhipu Search API Key (optional) | - |
-| `NANO_BANANA_API_KEY` | Nano Banana Pro API Key (optional) | - |
+| Variable | Description | Example Value |
+|----------|-------------|--------|
+| `FLASK_ENV` | Flask runtime environment | development |
+| `SECRET_KEY` | Flask secret key | banana-blog-secret-key |
+| `AI_PROVIDER_FORMAT` | AI Provider format (openai/gemini) | openai |
+| `TEXT_MODEL` | Text generation model | qwen3-max-preview |
+| `OPENAI_API_KEY` | OpenAI-compatible API Key | - |
+| `OPENAI_API_BASE` | OpenAI-compatible API Base URL | https://dashscope.aliyuncs.com/compatible-mode/v1 |
+| `LOG_LEVEL` | Log level | INFO |
+| `CORS_ORIGINS` | CORS allowed origins | * |
+| `NANO_BANANA_API_KEY` | Nano Banana image generation API Key (optional) | - |
+| `NANO_BANANA_API_BASE` | Nano Banana API Base URL | https://api.grsai.com |
+| `NANO_BANANA_MODEL` | Nano Banana model name | nano-banana-pro |
+| `ZAI_SEARCH_API_KEY` | Zhipu Web Search API Key (optional) | - |
+| `ZAI_SEARCH_API_BASE` | Zhipu search API Base URL | https://open.bigmodel.cn/api/paas/v4/web_search |
+| `ZAI_SEARCH_ENGINE` | Zhipu search engine type | search_pro_quark |
+| `ZAI_SEARCH_MAX_RESULTS` | Search max results | 5 |
+| `ZAI_SEARCH_CONTENT_SIZE` | Search content size | medium |
+| `ZAI_SEARCH_RECENCY_FILTER` | Search recency filter | noLimit |
 
 
 ## 🤝 Contributing

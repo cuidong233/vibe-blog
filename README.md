@@ -113,7 +113,7 @@ Banana Vibe Blog 应运而生，基于多 Agent 协作架构，自动完成调�
 </table>
 </div>
 
-### 博客结果 - 专业排版的技术文章
+### 博客输出 - 专业排版的技术文章
 
 ![博客结果](./backend/outputs/images/技术博客结果图.png)
 
