@@ -136,12 +136,12 @@ Banana Vibe Blog was born to solve these problems. Based on multi-Agent collabor
 ## 🎯 Feature Introduction
 
 ### 1. Multi-Agent Collaborative Architecture
-Multi-Agent workflow built on LangGraph, each agent with specific responsibilities, collaborating efficiently.
-- **Researcher Agent**: Deep research, searching the web for latest materials
-- **Planner Agent**: Smart planning, generating well-structured article outlines
-- **Writer Agent**: Content creation, writing easy-to-understand section content
-- **Coder Agent**: Code generation, providing runnable example code
-- **Artist Agent**: Smart illustration, generating Mermaid diagrams and AI images
+Based on LangGraph, multi-Agent workflow with clear division of labor and efficient collaboration.
+- **Researcher Agent**: Deep research, search the web for latest materials
+- **Planner Agent**: Smart planning, generate well-structured article outlines
+- **Writer Agent**: Content creation, write easy-to-understand chapter content
+- **Coder Agent**: Code generation, provide runnable example code
+- **Artist Agent**: Smart illustration, generate Mermaid diagrams and AI images
 
 ### 2. Deep Research Capability
 - **Zhipu Search Integration**: Automatically search the web for latest technical materials
@@ -282,63 +282,81 @@ python app.py
 
 ```
 banana-blog/
-├── backend/                          # Flask backend application
-│   ├── app.py                        # Flask application entry
-│   ├── config.py                     # Configuration file
-│   ├── requirements.txt              # Python dependencies
-│   ├── .env.example                  # Environment variable example
-│   ├── static/                       # Static files
-│   │   └── index.html                # Frontend page
-│   ├── outputs/                      # Generated article output directory
-│   │   └── images/                   # Generated images directory
+├── backend/                              # Flask backend application
+│   ├── app.py                            # Flask application entry + API routes
+│   ├── config.py                         # Configuration file
+│   ├── requirements.txt                  # Python dependencies
+│   ├── .env.example                      # Environment variable example
+│   ├── static/
+│   │   └── index.html                    # Frontend page (HTML + JS)
+│   ├── outputs/                          # Generated article output directory
+│   │   └── images/                       # AI generated images
 │   └── services/
-│       ├── llm_service.py            # LLM service
-│       ├── image_service.py          # Image generation service
-│       ├── task_service.py           # Task management service
-│       └── blog_generator/           # Blog generator core
-│           ├── blog_service.py       # Blog generation service
-│           ├── graph.py              # LangGraph workflow definition
-│           ├── agents/               # Agent implementations
-│           │   ├── researcher.py     # Research Agent
-│           │   ├── planner.py        # Planning Agent
-│           │   ├── writer.py         # Writing Agent
-│           │   ├── coder.py          # Code Agent
-│           │   ├── artist.py         # Illustration Agent
-│           │   └── assembler.py      # Assembly Agent
-│           ├── templates/            # Jinja2 Prompt templates
-│           │   ├── researcher.j2
-│           │   ├── planner.j2
-│           │   ├── writer.j2
-│           │   ├── coder.j2
-│           │   └── artist.j2
+│       ├── llm_service.py                # LLM service wrapper
+│       ├── image_service.py              # Image generation service (Nano Banana)
+│       ├── task_service.py               # SSE task management
+│       ├── database_service.py           # Database service
+│       ├── file_parser_service.py        # File parser service (PDF/MD/TXT)
+│       ├── knowledge_service.py          # Knowledge management service
+│       ├── pipeline_service.py           # Pipeline service
+│       ├── transform_service.py          # Transform service
+│       ├── prompts/                      # Service layer Prompt templates
+│       │   ├── document_summary.j2       # Document summary Prompt
+│       │   └── image_caption.j2          # Image caption Prompt
+│       └── blog_generator/               # Blog generator core
+│           ├── blog_service.py           # Blog generation service entry
+│           ├── generator.py              # LangGraph workflow definition
+│           ├── agents/                   # 9 Agent implementations
+│           │   ├── researcher.py         # Research Agent - web search
+│           │   ├── search_coordinator.py # Search Coordinator Agent - multi-round search
+│           │   ├── planner.py            # Planning Agent - outline generation
+│           │   ├── writer.py             # Writing Agent - content writing
+│           │   ├── questioner.py         # Questioner Agent - depth check
+│           │   ├── coder.py              # Code Agent - example generation
+│           │   ├── artist.py             # Artist Agent - Mermaid + AI images
+│           │   ├── reviewer.py           # Reviewer Agent - quality scoring
+│           │   └── assembler.py          # Assembler Agent - document synthesis
+│           ├── templates/                # Jinja2 Prompt templates
+│           │   ├── researcher.j2         # Research Prompt
+│           │   ├── planner.j2            # Planning Prompt
+│           │   ├── writer.j2             # Writing Prompt
+│           │   ├── writer_enhance.j2     # Writing enhancement Prompt
+│           │   ├── writer_enhance_knowledge.j2  # Knowledge-enhanced writing Prompt
+│           │   ├── questioner.j2         # Questioner Prompt
+│           │   ├── coder.j2              # Code Prompt
+│           │   ├── artist.j2             # Artist Prompt
+│           │   ├── cover_image_prompt.j2 # Cover image Prompt
+│           │   ├── reviewer.j2           # Reviewer Prompt
+│           │   ├── search_query.j2       # Search query Prompt
+│           │   ├── search_summarizer.j2  # Search summarizer Prompt
+│           │   ├── knowledge_gap_detector.j2  # Knowledge gap detector Prompt
+│           │   ├── assembler_header.j2   # Assembler header Prompt
+│           │   └── assembler_footer.j2   # Assembler footer Prompt
+│           ├── prompts/
+│           │   └── prompt_manager.py     # Prompt rendering manager
+│           ├── schemas/
+│           │   └── state.py              # Shared state definition
+│           ├── post_processors/
+│           │   └── markdown_formatter.py # Markdown post-processor
+│           ├── utils/
+│           │   └── helpers.py            # Utility functions
 │           └── services/
-│               └── search_service.py # Search service
-├── docs/                             # Documentation directory
-└── README.md                         # This file
+│               └── search_service.py     # Zhipu search service
+├── logo/                                 # Logo resources
+└── README.md
 ```
 
 
 ## 🔧 Environment Variables
 
-| Variable | Description | Example Value |
-|----------|-------------|--------|
-| `FLASK_ENV` | Flask runtime environment | development |
-| `SECRET_KEY` | Flask secret key | banana-blog-secret-key |
-| `AI_PROVIDER_FORMAT` | AI Provider format (openai/gemini) | openai |
-| `TEXT_MODEL` | Text generation model | qwen3-max-preview |
-| `OPENAI_API_KEY` | OpenAI-compatible API Key | - |
-| `OPENAI_API_BASE` | OpenAI-compatible API Base URL | https://dashscope.aliyuncs.com/compatible-mode/v1 |
-| `LOG_LEVEL` | Log level | INFO |
-| `CORS_ORIGINS` | CORS allowed origins | * |
-| `NANO_BANANA_API_KEY` | Nano Banana image generation API Key (optional) | - |
-| `NANO_BANANA_API_BASE` | Nano Banana API Base URL | https://api.grsai.com |
-| `NANO_BANANA_MODEL` | Nano Banana model name | nano-banana-pro |
-| `ZAI_SEARCH_API_KEY` | Zhipu Web Search API Key (optional) | - |
-| `ZAI_SEARCH_API_BASE` | Zhipu search API Base URL | https://open.bigmodel.cn/api/paas/v4/web_search |
-| `ZAI_SEARCH_ENGINE` | Zhipu search engine type | search_pro_quark |
-| `ZAI_SEARCH_MAX_RESULTS` | Search max results | 5 |
-| `ZAI_SEARCH_CONTENT_SIZE` | Search content size | medium |
-| `ZAI_SEARCH_RECENCY_FILTER` | Search recency filter | noLimit |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AI_PROVIDER_FORMAT` | AI Provider format | openai |
+| `OPENAI_API_KEY` | OpenAI API Key | - |
+| `OPENAI_API_BASE` | OpenAI API Base URL | https://api.openai.com/v1 |
+| `TEXT_MODEL` | Text generation model | gpt-4o |
+| `ZHIPU_API_KEY` | Zhipu Search API Key (optional) | - |
+| `NANO_BANANA_API_KEY` | Nano Banana Pro API Key (optional) | - |
 
 
 ## 🤝 Contributing
@@ -351,4 +369,4 @@ and
 
 ## 📄 License
 
-MIT License
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
