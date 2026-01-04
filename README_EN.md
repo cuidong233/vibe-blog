@@ -8,7 +8,7 @@
 
 <p>
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-4CAF50.svg)](https://github.com/lailoo/Banana-Vibe-Blog)
+[![Version](https://img.shields.io/badge/version-v0.1.0-4CAF50.svg)](https://github.com/lailoo/banana-vibe-blog)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
 
@@ -203,7 +203,7 @@ All Agents share unified state management and Prompt template library, ensuring 
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/lailoo/Banana-Vibe-Blog
+git clone https://github.com/lailoo/banana-vibe-blog
 ```
 
 2. **Install dependencies**
@@ -357,9 +357,9 @@ banana-blog/
 ## 🤝 Contributing
 
 Welcome to contribute to this project through
-[Issue](https://github.com/lailoo/Banana-Vibe-Blog/issues)
+[Issue](https://github.com/lailoo/banana-vibe-blog/issues)
 and
-[Pull Request](https://github.com/lailoo/Banana-Vibe-Blog/pulls)!
+[Pull Request](https://github.com/lailoo/banana-vibe-blog/pulls)!
 
 
 ## 📄 License

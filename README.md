@@ -12,7 +12,7 @@
 
 
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-4CAF50.svg)](https://github.com/lailoo/Banana-Vibe-Blog)
+[![Version](https://img.shields.io/badge/version-v0.1.0-4CAF50.svg)](https://github.com/lailoo/banana-vibe-blog)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
 <h1>Banana-Vibe-Blog</h1>
@@ -309,7 +309,7 @@ Banana Vibe Blog 应运而生，基于多 Agent 协作架构，自动完成调�
 
 1. **克隆代码仓库**
 ```bash
-git clone https://github.com/lailoo/Banana-Vibe-Blog
+git clone https://github.com/lailoo/banana-vibe-blog
 ```
 
 2. **安装依赖**
