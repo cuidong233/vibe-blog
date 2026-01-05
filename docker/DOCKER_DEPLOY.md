@@ -40,13 +40,13 @@ DASHSCOPE_API_KEY=your_dashscope_key
 **开发环境**（仅启动后端）：
 
 ```bash
-docker compose up -d backend
+docker compose -f docker/docker-compose.yml up -d backend
 ```
 
 **生产环境**（启动后端 + Nginx）：
 
 ```bash
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### 3. 验证部署
@@ -54,7 +54,7 @@ docker compose up -d
 检查容器状态：
 
 ```bash
-docker compose ps
+docker compose -f docker/docker-compose.yml ps
 ```
 
 测试健康检查：
@@ -69,29 +69,29 @@ curl http://localhost:5000/health
 
 ```bash
 # 查看所有服务日志
-docker compose logs -f
+docker compose -f docker/docker-compose.yml logs -f
 
 # 查看特定服务日志
-docker compose logs -f backend
+docker compose -f docker/docker-compose.yml logs -f backend
 
 # 查看最近 100 行日志
-docker compose logs --tail=100 backend
+docker compose -f docker/docker-compose.yml logs --tail=100 backend
 ```
 
 ### 停止和启动
 
 ```bash
 # 停止所有容器
-docker compose down
+docker compose -f docker/docker-compose.yml down
 
 # 停止并删除数据卷
-docker compose down -v
+docker compose -f docker/docker-compose.yml down -v
 
 # 重启服务
-docker compose restart backend
+docker compose -f docker/docker-compose.yml restart backend
 
 # 重新构建镜像
-docker compose build --no-cache
+docker compose -f docker/docker-compose.yml build --no-cache
 ```
 
 ### 进入容器
@@ -127,7 +127,7 @@ ssl/key.pem       # 私钥文件
 ### 启动完整堆栈
 
 ```bash
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 此时应用将在以下地址可访问：
@@ -140,7 +140,7 @@ docker compose up -d
 2. 修改 `nginx.conf` 中的 `server_name` 为你的域名
 3. 重启 Nginx：
 ```bash
-docker compose restart nginx
+docker compose -f docker/docker-compose.yml restart nginx
 ```
 
 ## 故障排查
@@ -150,7 +150,7 @@ docker compose restart nginx
 查看详细错误日志：
 
 ```bash
-docker compose logs backend
+docker compose -f docker/docker-compose.yml logs backend
 ```
 
 常见问题：
@@ -173,7 +173,7 @@ docker stats
 Docker 已配置日志轮转（最大 50MB，保留 3 个文件）。如需手动清理：
 
 ```bash
-docker compose logs --tail=0 -f backend
+docker compose -f docker/docker-compose.yml logs --tail=0 -f backend
 ```
 
 ## 环境变量说明
@@ -202,7 +202,7 @@ Docker Compose 配置了以下数据卷：
 
 ```bash
 # 停止并删除容器
-docker compose down
+docker compose -f docker/docker-compose.yml down
 
 # 删除镜像
 docker rmi vibe-blog-backend
