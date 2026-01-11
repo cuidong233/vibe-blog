@@ -616,6 +616,18 @@ def create_app(config_class=None):
             file_size = os.path.getsize(file_path)
             file_type = ext if ext != 'markdown' else 'md'
             
+            # PDF 页数检查（上传时立即检查）
+            if ext == 'pdf':
+                file_parser = get_file_parser()
+                if file_parser:
+                    page_count = file_parser._get_pdf_page_count(file_path)
+                    if page_count > file_parser.pdf_max_pages:
+                        os.remove(file_path)  # 删除已保存的文件
+                        return jsonify({
+                            'success': False, 
+                            'error': f'PDF 页数超过限制：{page_count} 页（最大支持 {file_parser.pdf_max_pages} 页）'
+                        }), 400
+            
             # 创建数据库记录
             db_service = get_db_service()
             db_service.create_document(

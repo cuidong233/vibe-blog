@@ -829,12 +829,20 @@
                     
                     if (data.success) {
                         const status = data.status;
-                        updateDocumentTagStatus(docId, status);
+                        const wordCount = data.markdown_length || 0;
+                        const errorMessage = data.error_message || '';
+                        
+                        // 更新本地状态（包括错误信息）
+                        const doc = uploadedDocuments.find(d => d.id === docId);
+                        if (doc) {
+                            doc.status = status;
+                            doc.wordCount = wordCount;
+                            doc.errorMessage = errorMessage;
+                        }
+                        
+                        updateDocumentTagStatus(docId, status, wordCount);
                         
                         if (status === 'ready' || status === 'error') {
-                            // 更新本地状态
-                            const doc = uploadedDocuments.find(d => d.id === docId);
-                            if (doc) doc.status = status;
                             return;
                         }
                     }
@@ -850,42 +858,50 @@
         }
         
         // 添加文档标签到 UI
-        function addDocumentTag(docId, filename, status, fileSize = 0) {
+        function addDocumentTag(docId, filename, status, fileSize = 0, wordCount = 0) {
             const container = document.getElementById('uploadedDocsList');
             const tag = document.createElement('div');
             tag.id = `doc-tag-${docId}`;
             tag.className = 'doc-tag';
             tag.style.cssText = `
-                display: flex; flex-direction: column; gap: 4px;
-                padding: 8px 12px; background: #f8f9fa;
-                border: 1px solid #e9ecef; border-radius: 8px;
-                font-size: 12px; color: #333; min-width: 180px; max-width: 220px;
+                display: flex; flex-direction: column; gap: 6px;
+                padding: 12px 16px; background: #fff;
+                border: 1px solid #e5e7eb; border-radius: 12px;
+                font-size: 13px; color: #333; min-width: 200px; max-width: 280px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             `;
             
-            const shortName = filename.length > 18 ? filename.substring(0, 16) + '...' : filename;
+            const shortName = filename.length > 20 ? filename.substring(0, 18) + '...' : filename;
             const fileSizeStr = fileSize > 0 ? formatFileSize(fileSize) : '';
+            const fileExt = filename.split('.').pop().toUpperCase();
             const statusText = getStatusText(status);
             const isLoading = isSpinningStatus(status);
             
+            // PDF 图标 SVG
+            const pdfIcon = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="2" width="16" height="20" rx="2" fill="#FEE2E2" stroke="#EF4444" stroke-width="1.5"/>
+                <path d="M8 7h8M8 11h8M8 15h5" stroke="#EF4444" stroke-width="1.5" stroke-linecap="round"/>
+                <rect x="12" y="14" width="6" height="6" rx="1" fill="#EF4444"/>
+                <text x="15" y="18.5" font-size="4" fill="white" text-anchor="middle" font-weight="bold">PDF</text>
+            </svg>`;
+            
             tag.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">📄</span>
-                    <span class="doc-name" title="${filename}" style="flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${shortName}</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="flex-shrink: 0;">${pdfIcon}</div>
+                    <span class="doc-name" title="${filename}" style="flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px;">${shortName}</span>
                     <button onclick="removeDocument('${docId}')" style="
-                        background: none; border: none; color: #999;
-                        cursor: pointer; font-size: 16px; padding: 0; line-height: 1;
+                        background: none; border: none; color: #9ca3af;
+                        cursor: pointer; font-size: 18px; padding: 0; line-height: 1;
                     ">×</button>
                 </div>
-                <div class="doc-progress-row" style="display: flex; align-items: center; gap: 6px; color: #f97316; font-size: 11px;">
+                <div class="doc-progress-row" style="display: flex; align-items: center; gap: 6px; font-size: 12px; padding-left: 38px;">
                     ${isLoading ? `
-                        <div style="flex: 1; height: 3px; background: #fee2e2; border-radius: 2px; overflow: hidden;">
-                            <div class="progress-bar" style="width: 30%; height: 100%; background: #f97316; animation: progress-pulse 1.5s ease-in-out infinite;"></div>
-                        </div>
-                        <span class="doc-status-text">${statusText}</span>
-                        ${fileSizeStr ? `<span style="color: #999;">· ${fileSizeStr}</span>` : ''}
+                        <span style="color: #f97316;">${statusText}</span>
+                        ${fileSizeStr ? `<span style="color: #9ca3af;">· ${fileSizeStr}</span>` : ''}
                     ` : `
-                        <span class="doc-status-text" style="color: ${status === 'ready' ? '#22c55e' : status === 'error' ? '#ef4444' : '#f97316'};">${statusText}</span>
-                        ${fileSizeStr ? `<span style="color: #999;">· ${fileSizeStr}</span>` : ''}
+                        <span style="color: #6b7280;">${fileExt}</span>
+                        ${fileSizeStr ? `<span style="color: #9ca3af;">· ${fileSizeStr}</span>` : ''}
+                        <span class="doc-word-count" style="color: #9ca3af;"></span>
                     `}
                 </div>
             `;
@@ -930,42 +946,62 @@
             return ['uploading', 'pending', 'parsing'].includes(status);
         }
         
-        // 更新文档标签状态
-        function updateDocumentTagStatus(docId, status) {
+        // 更新文档标签状态（豆包风格）
+        function updateDocumentTagStatus(docId, status, wordCount = 0) {
             const tag = document.getElementById(`doc-tag-${docId}`);
             if (!tag) return;
             
             const progressRow = tag.querySelector('.doc-progress-row');
             const doc = uploadedDocuments.find(d => d.id === docId);
             const fileSizeStr = doc && doc.fileSize ? formatFileSize(doc.fileSize) : '';
+            const fileExt = doc && doc.filename ? doc.filename.split('.').pop().toUpperCase() : 'PDF';
             const statusText = getStatusText(status);
             const isLoading = isSpinningStatus(status);
+            const wordCountStr = wordCount > 0 ? formatWordCount(wordCount) : (doc && doc.wordCount ? formatWordCount(doc.wordCount) : '');
+            
+            // 保存字数到文档对象
+            if (wordCount > 0 && doc) {
+                doc.wordCount = wordCount;
+            }
             
             if (progressRow) {
                 if (isLoading) {
                     progressRow.innerHTML = `
-                        <div style="flex: 1; height: 3px; background: #fee2e2; border-radius: 2px; overflow: hidden;">
-                            <div class="progress-bar" style="width: 30%; height: 100%; background: #f97316; animation: progress-pulse 1.5s ease-in-out infinite;"></div>
-                        </div>
-                        <span class="doc-status-text">${statusText}</span>
-                        ${fileSizeStr ? `<span style="color: #999;">· ${fileSizeStr}</span>` : ''}
+                        <span style="color: #f97316;">${statusText}</span>
+                        ${fileSizeStr ? `<span style="color: #9ca3af;">· ${fileSizeStr}</span>` : ''}
                     `;
-                } else {
+                } else if (status === 'ready') {
                     progressRow.innerHTML = `
-                        <span class="doc-status-text" style="color: ${status === 'ready' ? '#22c55e' : status === 'error' ? '#ef4444' : '#f97316'};">${statusText}</span>
-                        ${fileSizeStr ? `<span style="color: #999;">· ${fileSizeStr}</span>` : ''}
+                        <span style="color: #6b7280;">${fileExt}</span>
+                        ${fileSizeStr ? `<span style="color: #9ca3af;">· ${fileSizeStr}</span>` : ''}
+                        ${wordCountStr ? `<span style="color: #9ca3af;">· ${wordCountStr}</span>` : ''}
+                    `;
+                } else if (status === 'error') {
+                    const errorMsg = doc && doc.errorMessage ? doc.errorMessage : '解析失败';
+                    progressRow.innerHTML = `
+                        <span style="color: #ef4444;" title="${errorMsg}">${errorMsg.length > 20 ? errorMsg.substring(0, 18) + '...' : errorMsg}</span>
                     `;
                 }
             }
             
             // 根据状态更新边框样式
             if (status === 'ready') {
-                tag.style.borderColor = '#22c55e';
-                tag.style.background = '#f0fdf4';
+                tag.style.borderColor = '#e5e7eb';
+                tag.style.background = '#fff';
             } else if (status === 'error') {
-                tag.style.borderColor = '#ef4444';
+                tag.style.borderColor = '#fecaca';
                 tag.style.background = '#fef2f2';
             }
+        }
+        
+        // 格式化字数
+        function formatWordCount(count) {
+            if (count >= 10000) {
+                return `约 ${(count / 10000).toFixed(1)} 万字`;
+            } else if (count >= 1000) {
+                return `约 ${(count / 1000).toFixed(1)} 千字`;
+            }
+            return `${count} 字`;
         }
         
         // 移除文档标签

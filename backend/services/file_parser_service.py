@@ -395,8 +395,11 @@ class FileParserService:
                             'page_num': page_num
                         })
             
-            if not markdown_content:
+            if markdown_content is None:
                 return None, None, None, "未找到 Markdown 文件"
+            
+            if not markdown_content.strip():
+                return None, None, None, "PDF 解析结果为空，可能是扫描版 PDF 或内容无法识别"
             
             # 替换 Markdown 中的图片路径
             markdown_content = self._replace_image_paths(markdown_content, extract_id)
