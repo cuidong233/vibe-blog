@@ -122,6 +122,7 @@ class SharedState(TypedDict):
     target_audience: Literal["beginner", "intermediate", "advanced"]
     target_length: Literal["short", "medium", "long"]
     source_material: Optional[str]
+    image_style: str  # 图片风格 ID
     
     # 文档知识 (用户上传的文档)
     document_ids: List[str]  # 用户上传的文档 ID 列表
@@ -199,6 +200,7 @@ def create_initial_state(
     source_material: str = None,
     document_ids: List[str] = None,
     document_knowledge: List[dict] = None,
+    image_style: str = "",
 ) -> SharedState:
     """创建初始状态"""
     return SharedState(
@@ -207,6 +209,7 @@ def create_initial_state(
         target_audience=target_audience,
         target_length=target_length,
         source_material=source_material,
+        image_style=image_style,
         # 文档知识
         document_ids=document_ids or [],
         document_knowledge=document_knowledge or [],

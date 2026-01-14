@@ -24,6 +24,7 @@ from services import (
 from services.database_service import get_db_service, init_db_service
 from services.file_parser_service import get_file_parser, init_file_parser
 from services.knowledge_service import get_knowledge_service, init_knowledge_service
+from services.image_styles import get_style_manager
 
 # 创建任务 ID 上下文变量
 task_id_context: ContextVar[str] = ContextVar('task_id', default='')
@@ -285,6 +286,21 @@ def create_app(config_class=None):
             })
         return jsonify({'success': True, 'metaphors': metaphors})
     
+    # 获取图片风格列表 API
+    @app.route('/api/image-styles', methods=['GET'])
+    def get_image_styles():
+        """获取可用的图片风格列表（供前端下拉框使用）"""
+        try:
+            style_manager = get_style_manager()
+            styles = style_manager.get_all_styles()
+            return jsonify({
+                'success': True,
+                'styles': styles
+            })
+        except Exception as e:
+            logger.error(f"获取图片风格列表失败: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
     # 生成图片 API
     @app.route('/api/generate-image', methods=['POST'])
     def generate_image():
@@ -306,6 +322,7 @@ def create_app(config_class=None):
             # 获取参数
             aspect_ratio_str = data.get('aspect_ratio', '16:9')
             image_size_str = data.get('image_size', '2K')
+            image_style = data.get('image_style', '')  # 新增：图片风格
             use_style = data.get('use_style', True)
             download = data.get('download', True)
             
@@ -322,15 +339,27 @@ def create_app(config_class=None):
                     image_size = size
                     break
             
-            # 生成图片
-            style_prefix = STORYBOOK_STYLE_PREFIX if use_style else ""
-            result = image_service.generate(
-                prompt=prompt,
-                aspect_ratio=aspect_ratio,
-                image_size=image_size,
-                style_prefix=style_prefix,
-                download=download
-            )
+            # 生成图片 - 支持多风格
+            if image_style:
+                # 使用新的风格管理器渲染 Prompt
+                style_manager = get_style_manager()
+                full_prompt = style_manager.render_prompt(image_style, prompt)
+                result = image_service.generate(
+                    prompt=full_prompt,
+                    aspect_ratio=aspect_ratio,
+                    image_size=image_size,
+                    download=download
+                )
+            else:
+                # 兼容旧逻辑
+                style_prefix = STORYBOOK_STYLE_PREFIX if use_style else ""
+                result = image_service.generate(
+                    prompt=prompt,
+                    aspect_ratio=aspect_ratio,
+                    image_size=image_size,
+                    style_prefix=style_prefix,
+                    download=download
+                )
             
             if result:
                 return jsonify({
@@ -832,7 +861,8 @@ def create_app(config_class=None):
             target_audience = data.get('target_audience', 'intermediate')
             target_length = data.get('target_length', 'medium')
             source_material = data.get('source_material', None)
-            document_ids = data.get('document_ids', [])  # 新增：文档 ID 列表
+            document_ids = data.get('document_ids', [])  # 文档 ID 列表
+            image_style = data.get('image_style', '')  # 新增：图片风格 ID
             
             # 记录请求信息
             logger.info(f"📝 博客生成请求: topic={topic}, article_type={article_type}, target_audience={target_audience}, target_length={target_length}, document_ids={document_ids}")
@@ -875,6 +905,7 @@ def create_app(config_class=None):
                 source_material=source_material,
                 document_ids=document_ids,
                 document_knowledge=document_knowledge,
+                image_style=image_style,
                 task_manager=task_manager,
                 app=current_app._get_current_object()
             )

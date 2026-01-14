@@ -86,6 +86,7 @@ class BlogService:
         source_material: str = None,
         document_ids: list = None,
         document_knowledge: list = None,
+        image_style: str = "",
         task_manager=None,
         app=None
     ):
@@ -101,6 +102,7 @@ class BlogService:
             source_material: 参考资料
             document_ids: 文档 ID 列表
             document_knowledge: 文档知识列表
+            image_style: 图片风格 ID
             task_manager: 任务管理器
             app: Flask 应用实例
         """
@@ -123,6 +125,7 @@ class BlogService:
                             source_material=source_material,
                             document_ids=document_ids,
                             document_knowledge=document_knowledge,
+                            image_style=image_style,
                             task_manager=task_manager
                         )
                 else:
@@ -135,6 +138,7 @@ class BlogService:
                         source_material=source_material,
                         document_ids=document_ids,
                         document_knowledge=document_knowledge,
+                        image_style=image_style,
                         task_manager=task_manager
                     )
             finally:
@@ -156,6 +160,7 @@ class BlogService:
         source_material: str,
         document_ids: list = None,
         document_knowledge: list = None,
+        image_style: str = "",
         task_manager=None
     ):
         """
@@ -216,7 +221,7 @@ class BlogService:
                     'message': f'开始生成博客: {topic}'
                 })
             
-            # 创建初始状态（支持文档知识）
+            # 创建初始状态（支持文档知识和图片风格）
             initial_state = create_initial_state(
                 topic=topic,
                 article_type=article_type,
@@ -224,7 +229,8 @@ class BlogService:
                 target_length=target_length,
                 source_material=source_material,
                 document_ids=document_ids or [],
-                document_knowledge=document_knowledge or []
+                document_knowledge=document_knowledge or [],
+                image_style=image_style
             )
             
             # 注意：不要将函数放入 state，会导致 LangGraph checkpoint 序列化失败
@@ -458,12 +464,15 @@ class BlogService:
             # 生成封面架构图（基于全文内容）
             outline = final_state.get('outline', {})
             markdown_content = final_state.get('final_markdown', '')
+            # 从 final_state 获取图片风格参数
+            image_style = final_state.get('image_style', '')
             cover_image_path = self._generate_cover_image(
                 title=outline.get('title', topic),
                 topic=topic,
                 full_content=markdown_content,
                 task_manager=task_manager,
-                task_id=task_id
+                task_id=task_id,
+                image_style=image_style
             )
             
             # 自动保存 Markdown 到文件（包含封面图）
@@ -564,7 +573,8 @@ class BlogService:
         topic: str,
         full_content: str = "",
         task_manager=None,
-        task_id: str = None
+        task_id: str = None,
+        image_style: str = ""
     ) -> Optional[str]:
         """
         生成封面架构图
@@ -575,6 +585,7 @@ class BlogService:
             full_content: 全文 Markdown 内容
             task_manager: 任务管理器
             task_id: 任务 ID
+            image_style: 图片风格 ID（可选）
             
         Returns:
             图片本地路径
@@ -603,13 +614,21 @@ class BlogService:
                     'message': f'正在生成封面架构图...'
                 })
             
-            # 构建封面图 Prompt（使用模板）
-            from .prompts.prompt_manager import get_prompt_manager
-            pm = get_prompt_manager()
-            cover_prompt = pm.render_cover_image_prompt(article_summary=article_summary)
+            # 构建封面图 Prompt
+            if image_style:
+                # 使用风格管理器渲染 Prompt
+                from services.image_styles import get_style_manager
+                style_manager = get_style_manager()
+                cover_prompt = style_manager.render_prompt(image_style, article_summary)
+                logger.info(f"开始生成【封面图】({image_style}): {title}")
+            else:
+                # 兼容旧逻辑：使用原有模板
+                from .prompts.prompt_manager import get_prompt_manager
+                pm = get_prompt_manager()
+                cover_prompt = pm.render_cover_image_prompt(article_summary=article_summary)
+                logger.info(f"开始生成【封面图】: {title}")
             
             # 调用图片生成服务
-            logger.info(f"开始生成【封面图】: {title}")
             result = image_service.generate(
                 prompt=cover_prompt,
                 aspect_ratio=AspectRatio.LANDSCAPE_16_9,

@@ -1,0 +1,60 @@
+# 图片风格配置文件
+# 每种风格包含：name, name_en, description, icon, template, default(可选)
+
+styles:
+  cartoon:
+    name: 卡通手绘
+    name_en: Cartoon Hand-drawn
+    description: 可爱卡通风格，色彩明亮，适合技术科普
+    icon: "🎨"
+    template: cartoon.j2
+    default: true
+
+  ink_wash:
+    name: 水墨古风
+    name_en: Chinese Ink Wash
+    description: 中国传统水墨画风格，意境悠远，适合文化类内容
+    icon: "🖌️"
+    template: ink_wash.j2
+
+  academic:
+    name: 科研学术
+    name_en: Academic Research
+    description: CVPR/NeurIPS 顶刊风格，专业架构图，适合技术论文
+    icon: "📊"
+    template: academic.j2
+
+  chiikawa:
+    name: Chiikawa萌系
+    name_en: Chiikawa Cute Style
+    description: 吉伊卡哇风格，圆润软萌，适合轻松有趣的内容
+    icon: "🐰"
+    template: chiikawa.j2
+
+  biesty:
+    name: Biesty剖面图
+    name_en: Stephen Biesty Cross-Section
+    description: 精细手绘剖面图风格，展示系统内部结构，适合架构解析
+    icon: "🔍"
+    template: biesty.j2
+
+  whiteboard:
+    name: 白板笔记
+    name_en: Whiteboard Notes
+    description: 课堂白板/黑板笔记风格，适合教学讲解和知识梳理
+    icon: "📝"
+    template: whiteboard.j2
+
+  minimalist:
+    name: 简约极简
+    name_en: Clean Minimalist
+    description: 超极简风格，大量留白，极细线条，适合高端简洁呈现
+    icon: "⬜"
+    template: minimalist.j2
+
+  dark_tech:
+    name: 深色科技
+    name_en: Dark Mode Tech
+    description: 深色模式科技美学，霓虹色强调，适合技术/数据主题
+    icon: "🌙"
+    template: dark_tech.j2

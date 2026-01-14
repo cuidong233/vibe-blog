@@ -626,7 +626,7 @@
                         <div class="option-tag active" data-length="short" style="padding: 4px 10px; font-size: 11px; border-radius: 12px;">📄 短文</div>
                         <div class="option-tag" data-length="medium" style="padding: 4px 10px; font-size: 11px; border-radius: 12px;">📑 中等</div>
                         <div class="option-tag" data-length="long" style="padding: 4px 10px; font-size: 11px; border-radius: 12px;">📖 长文</div>
-                    </div>
+                                            </div>
                 </div>
                 <!-- 生成按钮 -->
                 <button id="createBlogBtn" style="
@@ -643,6 +643,48 @@
                 </button>
             </div>
         </div>
+        
+        <!-- 高级选项按钮（输入框下方） -->
+        <div style="margin-top: 12px;">
+            <div class="option-tag" id="advancedOptionsBtn" style="
+                padding: 6px 14px; 
+                font-size: 12px; 
+                border-radius: 16px; 
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+            ">⚙️ 高级选项 <span style="font-size: 10px;">▼</span></div>
+        </div>
+        
+        <!-- 高级选项面板（可折叠） -->
+        <div id="advancedOptionsPanel" style="
+            display: none;
+            margin-top: 8px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+        ">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 13px; color: #666;">🎨 配图风格:</span>
+                    <select id="imageStyleSelect" style="
+                        padding: 6px 12px;
+                        border: 1px solid rgba(0,0,0,0.15);
+                        border-radius: 8px;
+                        font-size: 13px;
+                        background: #fff;
+                        cursor: pointer;
+                        outline: none;
+                        min-width: 160px;
+                    ">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
         <!-- 博客生成内容区 -->
         <div id="blogContent"></div>
         
@@ -1424,7 +1466,8 @@
                         article_type: articleType,
                         target_audience: 'intermediate',
                         target_length: targetLength,
-                        document_ids: getReadyDocumentIds()
+                        document_ids: getReadyDocumentIds(),
+                        image_style: getSelectedImageStyle()
                     };
                 
                 const response = await fetch(apiUrl, {
@@ -1984,10 +2027,55 @@
         
         // 页面加载时获取历史记录
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadHistory);
+            document.addEventListener('DOMContentLoaded', () => {
+                loadHistory();
+                loadImageStyles();
+                initAdvancedOptions();
+            });
         } else {
             // DOM 已经加载完成，直接执行
             loadHistory();
+            loadImageStyles();
+            initAdvancedOptions();
+        }
+        
+        // ========== 高级选项功能 ==========
+        
+        // 加载图片风格列表
+        async function loadImageStyles() {
+            try {
+                const response = await fetch('/api/image-styles');
+                const data = await response.json();
+                if (data.success && data.styles) {
+                    const select = document.getElementById('imageStyleSelect');
+                    select.innerHTML = data.styles.map(style => 
+                        `<option value="${style.id}" ${style.default ? 'selected' : ''}>${style.icon} ${style.name}</option>`
+                    ).join('');
+                }
+            } catch (error) {
+                console.error('加载图片风格列表失败:', error);
+                document.getElementById('imageStyleSelect').innerHTML = '<option value="">默认风格</option>';
+            }
+        }
+        
+        // 初始化高级选项交互（可折叠）
+        function initAdvancedOptions() {
+            const advancedBtn = document.getElementById('advancedOptionsBtn');
+            const advancedPanel = document.getElementById('advancedOptionsPanel');
+            
+            if (advancedBtn && advancedPanel) {
+                advancedBtn.addEventListener('click', () => {
+                    const isVisible = advancedPanel.style.display !== 'none';
+                    advancedPanel.style.display = isVisible ? 'none' : 'block';
+                    advancedBtn.classList.toggle('active', !isVisible);
+                });
+            }
+        }
+        
+        // 获取选中的图片风格
+        function getSelectedImageStyle() {
+            const select = document.getElementById('imageStyleSelect');
+            return select ? select.value : '';
         }
         
         // ========== vibe-reviewer 功能 ==========

@@ -90,13 +90,14 @@ class ArtistAgent:
             logger.error(f"配图生成失败: {e}")
             raise
     
-    def _render_ai_image(self, prompt: str, caption: str) -> str:
+    def _render_ai_image(self, prompt: str, caption: str, image_style: str = "") -> str:
         """
         调用 Nano Banana API 生成 AI 图片
         
         Args:
             prompt: AI 图片生成 Prompt
             caption: 图片说明
+            image_style: 图片风格 ID（可选，为空则使用默认卡通风格）
             
         Returns:
             图片本地路径，失败返回 None
@@ -107,8 +108,17 @@ class ArtistAgent:
             return None
         
         try:
-            # 构建完整的 Prompt（卡通手绘信息图风格）
-            full_prompt = f"""请根据输入内容提取核心主题与要点，生成一张卡通风格的信息图：
+            # 构建完整的 Prompt
+            if image_style:
+                # 使用风格管理器渲染 Prompt
+                from services.image_styles import get_style_manager
+                style_manager = get_style_manager()
+                content = f"{prompt}\n\n图片说明：{caption}"
+                full_prompt = style_manager.render_prompt(image_style, content)
+                logger.info(f"开始生成【文章内容图】({image_style}): {caption}")
+            else:
+                # 兼容旧逻辑：使用默认卡通手绘风格
+                full_prompt = f"""请根据输入内容提取核心主题与要点，生成一张卡通风格的信息图：
 
 采用手绘风格，横版（16:9）构图。
 使用可爱的卡通元素、图标，增强趣味性和视觉记忆。
@@ -121,8 +131,8 @@ class ArtistAgent:
 
 图片说明：{caption}
 """
+                logger.info(f"开始生成【文章内容图】: {caption}")
             
-            logger.info(f"开始生成【文章内容图】: {caption}")
             result = image_service.generate(
                 prompt=full_prompt,
                 aspect_ratio=AspectRatio.LANDSCAPE_16_9,
@@ -275,9 +285,12 @@ class ArtistAgent:
                 
                 # 如果是 ai_image 类型，调用 Nano Banana API 生成图片
                 if render_method == 'ai_image':
+                    # 从 state 获取图片风格参数
+                    image_style = state.get('image_style', '')
                     rendered_path = self._render_ai_image(
                         prompt=image.get('content', ''),
-                        caption=image.get('caption', '')
+                        caption=image.get('caption', ''),
+                        image_style=image_style
                     )
                     if rendered_path:
                         rendered_path = f"./images/{rendered_path.split('/')[-1]}"
