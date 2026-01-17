@@ -87,6 +87,8 @@ class BlogService:
         document_ids: list = None,
         document_knowledge: list = None,
         image_style: str = "",
+        generate_cover_video: bool = False,
+        custom_config: dict = None,
         task_manager=None,
         app=None
     ):
@@ -98,11 +100,13 @@ class BlogService:
             topic: 技术主题
             article_type: 文章类型
             target_audience: 目标受众
-            target_length: 目标长度
+            target_length: 目标长度 (mini/short/medium/long/custom)
             source_material: 参考资料
             document_ids: 文档 ID 列表
             document_knowledge: 文档知识列表
             image_style: 图片风格 ID
+            generate_cover_video: 是否生成封面动画
+            custom_config: 自定义配置（仅当 target_length='custom' 时使用）
             task_manager: 任务管理器
             app: Flask 应用实例
         """
@@ -126,6 +130,8 @@ class BlogService:
                             document_ids=document_ids,
                             document_knowledge=document_knowledge,
                             image_style=image_style,
+                            generate_cover_video=generate_cover_video,
+                            custom_config=custom_config,
                             task_manager=task_manager
                         )
                 else:
@@ -139,6 +145,8 @@ class BlogService:
                         document_ids=document_ids,
                         document_knowledge=document_knowledge,
                         image_style=image_style,
+                        generate_cover_video=generate_cover_video,
+                        custom_config=custom_config,
                         task_manager=task_manager
                     )
             finally:
@@ -161,6 +169,8 @@ class BlogService:
         document_ids: list = None,
         document_knowledge: list = None,
         image_style: str = "",
+        generate_cover_video: bool = False,
+        custom_config: dict = None,
         task_manager=None
     ):
         """
@@ -221,7 +231,15 @@ class BlogService:
                     'message': f'开始生成博客: {topic}'
                 })
             
-            # 创建初始状态（支持文档知识和图片风格）
+            # 获取文章长度配置
+            from config import get_article_config
+            article_config = get_article_config(target_length, custom_config)
+            logger.info(f"文章配置: sections={article_config['sections_count']}, "
+                        f"images={article_config['images_count']}, "
+                        f"code_blocks={article_config['code_blocks_count']}, "
+                        f"words={article_config['target_word_count']}")
+            
+            # 创建初始状态（支持文档知识、图片风格和文章长度配置）
             initial_state = create_initial_state(
                 topic=topic,
                 article_type=article_type,
@@ -230,7 +248,12 @@ class BlogService:
                 source_material=source_material,
                 document_ids=document_ids or [],
                 document_knowledge=document_knowledge or [],
-                image_style=image_style
+                image_style=image_style,
+                custom_config=custom_config,
+                target_sections_count=article_config['sections_count'],
+                target_images_count=article_config['images_count'],
+                target_code_blocks_count=article_config['code_blocks_count'],
+                target_word_count=article_config['target_word_count']
             )
             
             # 注意：不要将函数放入 state，会导致 LangGraph checkpoint 序列化失败
@@ -506,6 +529,16 @@ class BlogService:
                     cover_image_path=cover_image_path
                 )
             
+            # 生成封面动画（如果用户选择了该选项）
+            cover_video_path = None
+            if generate_cover_video and cover_image_path:
+                cover_video_path = self._generate_cover_video(
+                    history_id=task_id,
+                    cover_image_path=cover_image_path,
+                    task_manager=task_manager,
+                    task_id=task_id
+                )
+            
             # 保存历史记录（使用包含封面图的 markdown）
             try:
                 from services.database_service import get_db_service
@@ -522,7 +555,12 @@ class BlogService:
                     code_blocks_count=len(final_state.get('code_blocks', [])),
                     images_count=len(final_state.get('images', [])),
                     review_score=final_state.get('review_score', 0),
-                    cover_image=cover_image_path
+                    cover_image=cover_image_path,
+                    cover_video=cover_video_path,
+                    target_sections_count=article_config.get('sections_count'),
+                    target_images_count=article_config.get('images_count'),
+                    target_code_blocks_count=article_config.get('code_blocks_count'),
+                    target_word_count=article_config.get('target_word_count')
                 )
                 logger.info(f"历史记录已保存: {task_id}")
             except Exception as e:
@@ -538,7 +576,8 @@ class BlogService:
                     'images_count': len(final_state.get('images', [])),
                     'code_blocks_count': len(final_state.get('code_blocks', [])),
                     'review_score': final_state.get('review_score', 0),
-                    'saved_path': saved_path
+                    'saved_path': saved_path,
+                    'cover_video': cover_video_path
                 })
             
             logger.info(f"博客生成完成: {task_id}, 保存到: {saved_path}")
@@ -653,6 +692,125 @@ class BlogService:
             logger.error(f"封面图生成失败: {e}")
             return None
     
+    def _generate_cover_video(
+        self,
+        history_id: str,
+        cover_image_path: str,
+        task_manager=None,
+        task_id: str = None
+    ) -> Optional[str]:
+        """
+        生成封面动画视频
+        
+        Args:
+            history_id: 历史记录 ID
+            cover_image_path: 封面图本地路径
+            task_manager: 任务管理器
+            task_id: 任务 ID
+            
+        Returns:
+            视频访问 URL 或 None
+        """
+        try:
+            from services.oss_service import get_oss_service
+            from services.video_service import get_video_service
+            import os
+            import uuid
+            
+            # 发送进度事件
+            if task_manager and task_id:
+                task_manager.send_event(task_id, 'progress', {
+                    'stage': 'video',
+                    'progress': 96,
+                    'message': '正在生成封面动画...'
+                })
+                task_manager.send_event(task_id, 'log', {
+                    'level': 'INFO',
+                    'logger': 'blog_service',
+                    'message': '开始生成封面动画视频...'
+                })
+            
+            # 检查视频服务
+            video_service = get_video_service()
+            if not video_service or not video_service.is_available():
+                logger.warning("视频生成服务不可用，跳过封面动画生成")
+                return None
+            
+            # 上传封面图到 OSS
+            oss_service = get_oss_service()
+            if not oss_service or not oss_service.is_available:
+                logger.warning("OSS 服务不可用，无法上传封面图")
+                return None
+            
+            # 生成 OSS 路径
+            unique_id = uuid.uuid4().hex[:8]
+            filename = os.path.basename(cover_image_path)
+            remote_path = f"vibe-blog/covers/{history_id}/{unique_id}_{filename}"
+            
+            if task_manager and task_id:
+                task_manager.send_event(task_id, 'log', {
+                    'level': 'INFO',
+                    'logger': 'blog_service',
+                    'message': '正在上传封面图到 OSS...'
+                })
+            
+            oss_result = oss_service.upload_file(
+                local_path=cover_image_path,
+                remote_path=remote_path
+            )
+            
+            if not oss_result.get('success'):
+                logger.error(f"封面图上传失败: {oss_result.get('error')}")
+                return None
+            
+            image_url = oss_result['url']
+            logger.info(f"封面图已上传到 OSS: {image_url}")
+            
+            if task_manager and task_id:
+                task_manager.send_event(task_id, 'log', {
+                    'level': 'INFO',
+                    'logger': 'blog_service',
+                    'message': '封面图上传完成，开始生成动画视频...'
+                })
+            
+            # 定义进度回调
+            def progress_callback(progress, status):
+                if task_manager and task_id:
+                    task_manager.send_event(task_id, 'log', {
+                        'level': 'INFO',
+                        'logger': 'blog_service',
+                        'message': f'视频生成进度: {progress}%'
+                    })
+            
+            # 调用视频生成服务
+            result = video_service.generate_from_image(
+                image_url=image_url,
+                progress_callback=progress_callback
+            )
+            
+            if not result:
+                logger.warning("视频生成失败")
+                return None
+            
+            # 构建视频访问 URL
+            video_filename = os.path.basename(result.local_path) if result.local_path else None
+            video_access_url = f"/outputs/videos/{video_filename}" if video_filename else result.url
+            
+            logger.info(f"封面动画生成成功: {video_access_url}")
+            
+            if task_manager and task_id:
+                task_manager.send_event(task_id, 'log', {
+                    'level': 'INFO',
+                    'logger': 'blog_service',
+                    'message': '封面动画生成完成'
+                })
+            
+            return video_access_url
+            
+        except Exception as e:
+            logger.error(f"封面动画生成失败: {e}", exc_info=True)
+            return None
+    
     def _extract_article_summary(
         self,
         full_content: str,
@@ -676,21 +834,8 @@ class BlogService:
         # 限制输入长度，避免超出 token 限制
         content_for_summary = full_content[:8000] if len(full_content) > 8000 else full_content
         
-        summary_prompt = f"""请阅读以下技术博客文章，提炼出一份简洁的内容摘要，用于生成文章封面信息图。
-
-要求：
-1. 提取文章的核心主题和关键概念（3-5个）
-2. 总结文章的主要章节和知识点
-3. 识别文章中涉及的技术栈、工具或框架
-4. 摘要控制在 1000 字以内
-5. 使用与原文相同的语言
-
-【文章标题】：{title}
-
-【文章内容】：
-{content_for_summary}
-
-请直接输出摘要内容，不要添加额外的格式或标记："""
+        from services.blog_generator.prompts.prompt_manager import get_prompt_manager
+        summary_prompt = get_prompt_manager().render_article_summary(title, content_for_summary)
 
         try:
             # 使用 generator 的 LLM 客户端

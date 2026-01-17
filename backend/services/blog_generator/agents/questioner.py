@@ -98,9 +98,11 @@ class QuestionerAgent:
         # 根据目标长度确定深度要求
         target_length = state.get('target_length', 'medium')
         depth_map = {
+            'mini': 'minimal',    # mini 模式使用最低深度要求
             'short': 'shallow',
             'medium': 'medium',
-            'long': 'deep'
+            'long': 'deep',
+            'custom': 'medium'    # 自定义模式使用中等深度
         }
         depth_requirement = depth_map.get(target_length, 'medium')
         

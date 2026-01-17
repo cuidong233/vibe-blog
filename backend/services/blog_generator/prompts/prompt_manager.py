@@ -128,7 +128,11 @@ class PromptManager:
         target_audience: str = "intermediate",
         target_length: str = "medium",
         background_knowledge: str = None,
-        key_concepts: list = None
+        key_concepts: list = None,
+        target_sections_count: int = None,
+        target_images_count: int = None,
+        target_code_blocks_count: int = None,
+        target_word_count: int = None
     ) -> str:
         """渲染 Planner Prompt"""
         return self.render(
@@ -138,7 +142,11 @@ class PromptManager:
             target_audience=target_audience,
             target_length=target_length,
             background_knowledge=background_knowledge,
-            key_concepts=key_concepts or []
+            key_concepts=key_concepts or [],
+            target_sections_count=target_sections_count,
+            target_images_count=target_images_count,
+            target_code_blocks_count=target_code_blocks_count,
+            target_word_count=target_word_count
         )
     
     def render_writer(
@@ -298,6 +306,10 @@ class PromptManager:
             article_summary=article_summary
         )
     
+    def render_cover_video_prompt(self) -> str:
+        """渲染封面视频动画 Prompt"""
+        return self.render('cover_video_prompt')
+    
     def render_search_summarizer(
         self,
         gaps: list,
@@ -309,6 +321,18 @@ class PromptManager:
             gaps=gaps or [],
             results=results or []
         )
+    
+    def render_search_router(self, topic: str) -> str:
+        """渲染搜索源路由 Prompt"""
+        return self.render('search_router', topic=topic)
+    
+    def render_article_summary(self, title: str, content: str) -> str:
+        """渲染文章摘要提炼 Prompt"""
+        return self.render('article_summary', title=title, content=content)
+    
+    def render_artist_default(self, prompt: str, caption: str) -> str:
+        """渲染默认图片生成 Prompt（卡通手绘风格）"""
+        return self.render('artist_default', prompt=prompt, caption=caption)
 
 
 # 全局实例

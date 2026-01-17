@@ -31,6 +31,8 @@ from services.database_service import get_db_service, init_db_service
 from services.file_parser_service import get_file_parser, init_file_parser
 from services.knowledge_service import get_knowledge_service, init_knowledge_service
 from services.image_styles import get_style_manager
+from services.oss_service import get_oss_service, init_oss_service
+from services.video_service import get_video_service, init_video_service
 
 # 创建任务 ID 上下文变量
 task_id_context: ContextVar[str] = ContextVar('task_id', default='')
@@ -108,6 +110,26 @@ def create_app(config_class=None):
     app.config['IMAGE_OUTPUT_FOLDER'] = os.path.join(app.config.get('OUTPUT_FOLDER', 'outputs'), 'images')
     init_image_service(app.config)
     
+    # 初始化 OSS 服务（用于上传图片获取公网 URL）
+    init_oss_service(app.config)
+    oss_service = get_oss_service()
+    if oss_service and oss_service.is_available:
+        logger.info("OSS 服务已初始化")
+    else:
+        logger.warning("OSS 服务不可用，封面动画功能将受限")
+    
+    # 初始化视频生成服务（视频保存到 outputs/videos/）
+    try:
+        os.makedirs(os.path.join(app.config.get('OUTPUT_FOLDER', 'outputs'), 'videos'), exist_ok=True)
+    except (OSError, IOError):
+        pass
+    init_video_service(app.config)
+    video_service = get_video_service()
+    if video_service and video_service.is_available():
+        logger.info("视频生成服务已初始化")
+    else:
+        logger.warning("视频生成服务不可用")
+    
     # 初始化知识源相关服务（二期）
     init_db_service()
     init_knowledge_service(
@@ -163,6 +185,12 @@ def create_app(config_class=None):
     def serve_output_image(filename):
         images_folder = os.path.join(outputs_folder, 'images')
         return send_from_directory(images_folder, filename)
+    
+    # 提供 outputs 目录下的视频文件
+    @app.route('/outputs/videos/<path:filename>')
+    def serve_output_video(filename):
+        videos_folder = os.path.join(outputs_folder, 'videos')
+        return send_from_directory(videos_folder, filename)
     
     # API 文档页面（保留原来的简单页面）
     @app.route('/api-docs')
@@ -868,10 +896,22 @@ def create_app(config_class=None):
             target_length = data.get('target_length', 'medium')
             source_material = data.get('source_material', None)
             document_ids = data.get('document_ids', [])  # 文档 ID 列表
-            image_style = data.get('image_style', '')  # 新增：图片风格 ID
+            image_style = data.get('image_style', '')  # 图片风格 ID
+            generate_cover_video = data.get('generate_cover_video', False)  # 是否生成封面动画
+            custom_config = data.get('custom_config', None)  # 自定义配置（仅当 target_length='custom' 时使用）
+            
+            # 验证自定义配置
+            if target_length == 'custom':
+                if not custom_config:
+                    return jsonify({'success': False, 'error': '自定义模式需要提供 custom_config 参数'}), 400
+                try:
+                    from config import validate_custom_config
+                    validate_custom_config(custom_config)
+                except ValueError as e:
+                    return jsonify({'success': False, 'error': f'自定义配置验证失败: {str(e)}'}), 400
             
             # 记录请求信息
-            logger.info(f"📝 博客生成请求: topic={topic}, article_type={article_type}, target_audience={target_audience}, target_length={target_length}, document_ids={document_ids}")
+            logger.info(f"📝 博客生成请求: topic={topic}, article_type={article_type}, target_audience={target_audience}, target_length={target_length}, document_ids={document_ids}, generate_cover_video={generate_cover_video}, custom_config={custom_config}")
             
             # 检查博客生成服务
             blog_service = get_blog_service()
@@ -912,6 +952,8 @@ def create_app(config_class=None):
                 document_ids=document_ids,
                 document_knowledge=document_knowledge,
                 image_style=image_style,
+                generate_cover_video=generate_cover_video,
+                custom_config=custom_config,
                 task_manager=task_manager,
                 app=current_app._get_current_object()
             )
@@ -925,6 +967,78 @@ def create_app(config_class=None):
             
         except Exception as e:
             logger.error(f"创建博客生成任务失败: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    @app.route('/api/blog/generate/mini', methods=['POST'])
+    def generate_blog_mini():
+        """
+        创建 Mini 版博客生成任务（1个章节，完整流程）
+        用于快速测试整个功能链路
+        
+        请求体:
+        {
+            "topic": "LangGraph 入门教程",
+            "article_type": "tutorial",
+            "generate_cover_video": true  // 可选，是否生成封面动画
+        }
+        
+        返回:
+        {
+            "success": true,
+            "task_id": "xxx",
+            "message": "任务已创建，请订阅 SSE 获取进度"
+        }
+        """
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({'success': False, 'error': '请提供 JSON 数据'}), 400
+            
+            topic = data.get('topic', '')
+            if not topic:
+                return jsonify({'success': False, 'error': '请提供 topic 参数'}), 400
+            
+            article_type = data.get('article_type', 'tutorial')
+            generate_cover_video = data.get('generate_cover_video', False)
+            
+            logger.info(f"📝 Mini 博客生成请求: topic={topic}, article_type={article_type}, generate_cover_video={generate_cover_video}")
+            
+            # 检查博客生成服务
+            blog_service = get_blog_service()
+            if not blog_service:
+                return jsonify({'success': False, 'error': '博客生成服务不可用'}), 500
+            
+            # 创建任务
+            task_manager = get_task_manager()
+            task_id = task_manager.create_task()
+            
+            # 异步执行生成（Mini 版：使用 mini 模式，只生成 1 个章节）
+            from flask import current_app
+            blog_service.generate_async(
+                task_id=task_id,
+                topic=topic,
+                article_type=article_type,
+                target_audience='intermediate',
+                target_length='mini',  # Mini 版使用 mini 模式
+                source_material=None,
+                document_ids=[],
+                document_knowledge=[],
+                image_style='',
+                generate_cover_video=generate_cover_video,
+                custom_config=None,
+                task_manager=task_manager,
+                app=current_app._get_current_object()
+            )
+            
+            return jsonify({
+                'success': True,
+                'task_id': task_id,
+                'message': 'Mini 博客生成任务已创建（1个章节完整流程），请订阅 /api/tasks/{task_id}/stream 获取进度'
+            }), 202
+            
+        except Exception as e:
+            logger.error(f"创建 Mini 博客生成任务失败: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/blog/generate/sync', methods=['POST'])
@@ -984,12 +1098,25 @@ def create_app(config_class=None):
     
     @app.route('/api/history', methods=['GET'])
     def list_history():
-        """获取历史记录列表"""
+        """获取历史记录列表（支持分页）"""
         try:
-            limit = request.args.get('limit', 20, type=int)
+            page = request.args.get('page', 1, type=int)
+            page_size = request.args.get('page_size', 12, type=int)
+            offset = (page - 1) * page_size
+            
             db_service = get_db_service()
-            records = db_service.list_history(limit=limit)
-            return jsonify({'success': True, 'records': records})
+            total = db_service.count_history()
+            records = db_service.list_history(limit=page_size, offset=offset)
+            total_pages = (total + page_size - 1) // page_size
+            
+            return jsonify({
+                'success': True, 
+                'records': records,
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': total_pages
+            })
         except Exception as e:
             logger.error(f"获取历史记录失败: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
@@ -1020,6 +1147,111 @@ def create_app(config_class=None):
                 return jsonify({'success': False, 'error': '记录不存在'}), 404
         except Exception as e:
             logger.error(f"删除历史记录失败: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # ========== 视频生成 API ==========
+    
+    @app.route('/api/video/generate', methods=['POST'])
+    def generate_video():
+        """
+        生成封面动画视频
+        
+        请求体:
+        {
+            "history_id": "xxx",      // 历史记录 ID（用于更新数据库）
+            "image_url": "https://...", // 封面图 URL（可选，如果提供则直接使用）
+            "image_path": "/path/to/image.png", // 封面图本地路径（可选）
+            "prompt": "可选的自定义提示词"
+        }
+        
+        返回:
+        {
+            "success": true,
+            "video_url": "/outputs/videos/xxx.mp4",
+            "task_id": "veo3-task-id"
+        }
+        """
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({'success': False, 'error': '请提供 JSON 数据'}), 400
+            
+            history_id = data.get('history_id')
+            image_url = data.get('image_url')
+            image_path = data.get('image_path')
+            prompt = data.get('prompt')
+            
+            # 检查视频服务
+            video_service = get_video_service()
+            if not video_service or not video_service.is_available():
+                return jsonify({'success': False, 'error': '视频生成服务不可用'}), 503
+            
+            # 如果没有提供 image_url，需要从本地路径上传到 OSS
+            if not image_url:
+                if not image_path:
+                    # 尝试从历史记录获取封面图路径
+                    if history_id:
+                        db_service = get_db_service()
+                        record = db_service.get_history(history_id)
+                        if record and record.get('cover_image'):
+                            image_path = record.get('cover_image')
+                
+                if not image_path:
+                    return jsonify({'success': False, 'error': '缺少 image_url 或 image_path 参数'}), 400
+                
+                # 上传到 OSS
+                oss_service = get_oss_service()
+                if not oss_service or not oss_service.is_available:
+                    return jsonify({'success': False, 'error': 'OSS 服务不可用，无法上传图片'}), 503
+                
+                # 生成 OSS 路径
+                import uuid
+                unique_id = uuid.uuid4().hex[:8]
+                filename = os.path.basename(image_path)
+                remote_path = f"vibe-blog/covers/{unique_id}_{filename}"
+                
+                oss_result = oss_service.upload_file(
+                    local_path=image_path,
+                    remote_path=remote_path
+                )
+                
+                if not oss_result.get('success'):
+                    return jsonify({'success': False, 'error': f"图片上传失败: {oss_result.get('error')}"}), 500
+                
+                image_url = oss_result['url']
+                logger.info(f"封面图已上传到 OSS: {image_url}")
+            
+            # 调用视频生成服务
+            logger.info(f"开始生成封面动画: history_id={history_id}, image_url={image_url[:80]}...")
+            
+            result = video_service.generate_from_image(
+                image_url=image_url,
+                prompt=prompt
+            )
+            
+            if not result:
+                return jsonify({'success': False, 'error': '视频生成失败'}), 500
+            
+            # 构建视频访问 URL
+            video_filename = os.path.basename(result.local_path) if result.local_path else None
+            video_access_url = f"/outputs/videos/{video_filename}" if video_filename else result.url
+            
+            # 更新数据库
+            if history_id:
+                db_service = get_db_service()
+                db_service.update_history_video(history_id, video_access_url)
+            
+            logger.info(f"封面动画生成成功: {video_access_url}")
+            
+            return jsonify({
+                'success': True,
+                'video_url': video_access_url,
+                'task_id': result.task_id
+            })
+            
+        except Exception as e:
+            logger.error(f"视频生成失败: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
     
     # ========== Markdown 导出 API ==========

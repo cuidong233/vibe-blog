@@ -33,7 +33,11 @@ class PlannerAgent:
         target_length: str,
         background_knowledge: str = "",
         key_concepts: list = None,
-        on_stream: callable = None
+        on_stream: callable = None,
+        target_sections_count: int = None,
+        target_images_count: int = None,
+        target_code_blocks_count: int = None,
+        target_word_count: int = None
     ) -> Dict[str, Any]:
         """
         生成文章大纲
@@ -42,10 +46,14 @@ class PlannerAgent:
             topic: 技术主题
             article_type: 文章类型
             target_audience: 目标受众
-            target_length: 目标长度
+            target_length: 目标长度 (mini/short/medium/long/custom)
             background_knowledge: 背景知识
             key_concepts: 核心概念列表
             on_stream: 流式回调函数 (delta, accumulated) -> None
+            target_sections_count: 目标章节数
+            target_images_count: 目标配图数
+            target_code_blocks_count: 目标代码块数
+            target_word_count: 目标字数
             
         Returns:
             大纲字典
@@ -59,7 +67,11 @@ class PlannerAgent:
             target_audience=target_audience,
             target_length=target_length,
             background_knowledge=background_knowledge,
-            key_concepts=key_concepts
+            key_concepts=key_concepts,
+            target_sections_count=target_sections_count,
+            target_images_count=target_images_count,
+            target_code_blocks_count=target_code_blocks_count,
+            target_word_count=target_word_count
         )
         
         try:
@@ -138,7 +150,11 @@ class PlannerAgent:
                 target_length=state.get('target_length', 'medium'),
                 background_knowledge=state.get('background_knowledge', ''),
                 key_concepts=state.get('key_concepts', []),
-                on_stream=on_stream
+                on_stream=on_stream,
+                target_sections_count=state.get('target_sections_count'),
+                target_images_count=state.get('target_images_count'),
+                target_code_blocks_count=state.get('target_code_blocks_count'),
+                target_word_count=state.get('target_word_count')
             )
             
             state['outline'] = outline

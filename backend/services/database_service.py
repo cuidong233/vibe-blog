@@ -119,6 +119,11 @@ class DatabaseService:
                     images_count INTEGER DEFAULT 0,
                     review_score INTEGER DEFAULT 0,
                     cover_image TEXT,
+                    cover_video TEXT,
+                    target_sections_count INTEGER,
+                    target_images_count INTEGER,
+                    target_code_blocks_count INTEGER,
+                    target_word_count INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 
@@ -131,6 +136,27 @@ class DatabaseService:
                 CREATE INDEX IF NOT EXISTS idx_history_created_at ON history_records(created_at);
             ''')
         logger.info("数据库表初始化完成")
+        
+        # 执行数据库迁移
+        self._migrate_tables()
+    
+    def _migrate_tables(self):
+        """数据库迁移：检查并添加新字段"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(history_records)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            new_columns = {
+                'target_sections_count': 'INTEGER',
+                'target_images_count': 'INTEGER',
+                'target_code_blocks_count': 'INTEGER',
+                'target_word_count': 'INTEGER'
+            }
+            
+            for col_name, col_type in new_columns.items():
+                if col_name not in columns:
+                    logger.info(f"迁移数据库：添加 {col_name} 列")
+                    conn.execute(f"ALTER TABLE history_records ADD COLUMN {col_name} {col_type}")
     
     # ========== 文档操作 ==========
     
@@ -456,18 +482,25 @@ class DatabaseService:
         code_blocks_count: int = 0,
         images_count: int = 0,
         review_score: int = 0,
-        cover_image: str = None
+        cover_image: str = None,
+        cover_video: str = None,
+        target_sections_count: int = None,
+        target_images_count: int = None,
+        target_code_blocks_count: int = None,
+        target_word_count: int = None
     ) -> Dict[str, Any]:
         """保存历史记录"""
         with self.get_connection() as conn:
             conn.execute('''
                 INSERT INTO history_records 
                 (id, topic, article_type, target_length, markdown_content, outline, 
-                 sections_count, code_blocks_count, images_count, review_score, cover_image)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 sections_count, code_blocks_count, images_count, review_score, cover_image, cover_video,
+                 target_sections_count, target_images_count, target_code_blocks_count, target_word_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 history_id, topic, article_type, target_length, markdown_content, outline,
-                sections_count, code_blocks_count, images_count, review_score, cover_image
+                sections_count, code_blocks_count, images_count, review_score, cover_image, cover_video,
+                target_sections_count, target_images_count, target_code_blocks_count, target_word_count
             ))
         
         logger.info(f"保存历史记录: {history_id}, 主题: {topic}")
@@ -485,16 +518,38 @@ class DatabaseService:
                 return dict(row)
         return None
     
-    def list_history(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """列出历史记录（按时间倒序）"""
+    def list_history(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """列出历史记录（按时间倒序，支持分页）"""
         with self.get_connection() as conn:
             cursor = conn.execute(
                 '''SELECT id, topic, article_type, target_length, sections_count, 
-                   code_blocks_count, images_count, review_score, cover_image, created_at 
-                   FROM history_records ORDER BY created_at DESC LIMIT ?''',
-                (limit,)
+                   code_blocks_count, images_count, review_score, cover_image, cover_video,
+                   target_sections_count, target_images_count, target_code_blocks_count, target_word_count,
+                   created_at 
+                   FROM history_records ORDER BY created_at DESC LIMIT ? OFFSET ?''',
+                (limit, offset)
             )
             return [dict(row) for row in cursor.fetchall()]
+    
+    def count_history(self) -> int:
+        """获取历史记录总数"""
+        with self.get_connection() as conn:
+            cursor = conn.execute('SELECT COUNT(*) FROM history_records')
+            return cursor.fetchone()[0]
+    
+    def update_history_video(self, history_id: str, cover_video: str) -> bool:
+        """更新历史记录的封面动画"""
+        with self.get_connection() as conn:
+            cursor = conn.execute('''
+                UPDATE history_records 
+                SET cover_video = ?
+                WHERE id = ?
+            ''', (cover_video, history_id))
+            updated = cursor.rowcount > 0
+        
+        if updated:
+            logger.info(f"更新历史记录封面动画: {history_id}")
+        return updated
     
     def delete_history(self, history_id: str) -> bool:
         """删除历史记录"""
